@@ -1,0 +1,60 @@
+/**
+ * __TOOL_NAME__ Google Sheets Add-on
+ *
+ * Installation:
+ * 1. Open your Google Sheet
+ * 2. Go to Extensions > Apps Script
+ * 3. Paste this code
+ * 4. Save and refresh the sheet
+ * 5. Use menu: __TOOL_NAME__ > __MENU_ACTION__
+ *
+ * Note: This add-on runs on Google's servers. For fully local processing,
+ * export your sheet as xlsx and use the web app at http://localhost:__PORT__
+ */
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('__TOOL_NAME__')
+    .addItem('__MENU_ACTION__', 'runAction')
+    .addItem('Check Server Status', 'checkServer')
+    .addToUi();
+}
+
+function checkServer() {
+  const ui = SpreadsheetApp.getUi();
+  try {
+    const response = UrlFetchApp.fetch('http://localhost:__PORT__/api/health', {
+      muteHttpExceptions: true
+    });
+    if (response.getResponseCode() === 200) {
+      ui.alert('Server Status: Online\n\n__TOOL_NAME__ server is running on localhost:__PORT__');
+    } else {
+      throw new Error('Server not responding');
+    }
+  } catch (e) {
+    ui.alert('Server Status: Offline\n\nPlease start the server:\n  __CLI_COMMAND__-web\n\nOr use the web app directly at http://localhost:__PORT__');
+  }
+}
+
+function runAction() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const url = ss.getUrl();
+
+  // Check server
+  try {
+    UrlFetchApp.fetch('http://localhost:__PORT__/api/health', { muteHttpExceptions: true });
+  } catch (e) {
+    ui.alert('Server not running.\n\nPlease start: __CLI_COMMAND__-web\nThen try again.\n\nAlternatively, export your sheet as xlsx and use the web app directly.');
+    return;
+  }
+
+  // Open the local web app with the sheet URL
+  const webUrl = 'http://localhost:__PORT__?sheet_url=' + encodeURIComponent(url);
+  const html = HtmlService.createHtmlOutput(
+    '<script>window.open("' + webUrl + '", "_blank");</script>' +
+    '<p>Opening __TOOL_NAME__...</p>' +
+    '<p>If nothing happens, visit: <a href="' + webUrl + '" target="_blank">' + webUrl + '</a></p>'
+  );
+  ui.showModalDialog(html, 'Opening __TOOL_NAME__...');
+}
